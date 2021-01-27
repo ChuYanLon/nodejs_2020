@@ -1,16 +1,47 @@
+<?php include 'common.php'; ?>
 <?php if(!defined('__TYPECHO_ADMIN__')) exit; ?>
-<div class="typecho-head-nav clearfix" role="navigation">
-    <nav id="typecho-nav-list">
-        <?php $menu->output(); ?>
-    </nav>
-    <div class="operate">
-        <?php Typecho_Plugin::factory('admin/menu.php')->navBar(); ?>
-        <a title="<?php
-                    if ($user->logged > 0) {
-                        $logged = new Typecho_Date($user->logged);
-                        _e('最后登录: %s', $logged->word());
-                    }
-                    ?>" href="<?php $options->adminUrl('profile.php'); ?>" class="author"><?php $user->screenName(); ?></a><a class="exit" href="<?php $options->logoutUrl(); ?>"><?php _e('登出'); ?></a><a href="<?php $options->siteUrl(); ?>"><?php _e('网站'); ?></a>
-    </div>
-</div>
 
+		
+<script>
+$(document).ready(function () {
+    var ul = $('#typecho-message ul'), cache = window.sessionStorage,
+        html = cache ? cache.getItem('feed') : '',
+        update = cache ? cache.getItem('update') : '';
+
+    if (!!html) {
+        ul.html(html);
+    } else {
+        html = '';
+        $.get('<?php $options->index('/action/ajax?do=feed'); ?>', function (o) {
+            for (var i = 0; i < o.length; i ++) {
+                var item = o[i];
+                html += '<li><span>' + item.date + '</span> <a href="' + item.link + '" target="_blank">' + item.title
+                    + '</a></li>';
+            }
+
+            ul.html(html);
+            cache.setItem('feed', html);
+        }, 'json');
+    }
+
+    function applyUpdate(update) {
+        if (update.available) {
+            $('<div class="update-check message error"><p>'
+                + '<?php _e('您当前使用的版本是 %s'); ?>'.replace('%s', update.current) + '<br />'
+                + '<strong><a href="' + update.link + '" target="_blank">'
+                + '<?php _e('官方最新版本是 %s'); ?>'.replace('%s', update.latest) + '</a></strong></p></div>')
+            .insertAfter('.typecho-page-title').effect('highlight');
+        }
+    }
+
+    if (!!update) {
+        applyUpdate($.parseJSON(update));
+    } else {
+        $.get('<?php $options->index('/action/ajax?do=checkVersion'); ?>', function (o, status, resp) {
+            applyUpdate(o);
+            cache.setItem('update', resp.responseText);
+        }, 'json');
+    }
+});
+
+</script>
